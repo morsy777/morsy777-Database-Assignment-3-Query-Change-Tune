@@ -173,6 +173,7 @@ FROM
 	[delivery].[Sections]
 WHERE [Location] != 'Hall A' OR [Location] IS NULL;
 
+
 -- 5.19
 -- ALHUMDULEALLAH I SOLVED IT ENTIRELY ON MY OWN, WITHOUT AI TOOLS, THEN I REVIEWD MY ANSWER 
 SELECT 
@@ -199,23 +200,115 @@ FROM
 	[finance].[Invoices]
 WHERE [PaidAmount] < [TotalAmount];
 
+
 -- 5.20
+SELECT 
+	[Id],
+	[FirstName],
+	[LastName],
+	[PhoneNumber]
+FROM
+	[identity].Users
+ORDER BY [Id]   
+OFFSET 40 ROWS -- 40 = (PAGE NO. - 1) * PAGE SIZE
+FETCH NEXT 10 ROWS ONLY 
 
 
 -- 5.21
 
 
+SELECT TOP 50
+	[Id],
+	[FirstName],
+	[LastName],
+	[PhoneNumber]
+FROM
+	[identity].Users
+ORDER BY [Id]   
+
+DECLARE @LastId INT;
+
+SELECT @LastId = MAX([Id])
+FROM (
+	SELECT TOP 50
+			[Id],
+			[FirstName],
+			[LastName],
+			[PhoneNumber]
+		FROM
+			[identity].Users
+		ORDER BY [Id]   
+) AS P
+
+SELECT TOP 50
+	[Id],
+	[FirstName],
+	[LastName],
+	[PhoneNumber]
+FROM 
+	[identity].Users
+WHERE [Id] > @LastId
+ORDER BY [Id] 
+
+
 -- 5.22
+SELECT TOP 10
+	[Id],
+	[Amount],
+	[CurrencyCode],
+	[CreatedAtUtc]
+FROM 
+	[finance].[Payments]
+ORDER BY [CreatedAtUtc] DESC, [Id];
 
 
 -- 5.23
-
+SELECT DISTINCT TOP 10
+	UPPER(TRIM([Title])) AS [Title],
+	[EstimatedMinutes],
+	LEN(TRIM([Title])) AS [Title Length],
+	CASE
+		WHEN [EstimatedMinutes] <= 15  THEN 'quick'
+		WHEN [EstimatedMinutes] <= 45  THEN 'standard'
+		WHEN [EstimatedMinutes] > 45  THEN 'long'
+		ELSE 'not set'
+	END AS [Duration]
+FROM
+	[content].[Lessons]
+WHERE 
+	[IsPublished] = 1
+ORDER BY [Title Length] DESC;
 
 -- 5.24
 
+-- CTE ALLOW US TO CREATE A TEMP QUERY TO USE IT'S RESULT IN ONTHER ONE
+WITH InvoiceData AS 
+(
+	SELECT 
+		CONVERT(CHAR(7), [DueAtUtc], 126) AS [Due Month],
+		[CurrencyCode],
+		CASE
+			WHEN [PaidAmount] = 0.00 THEN 'not paid'
+			WHEN [PaidAmount] < [TotalAmount] THEN 'partially paid'
+		END AS [Payment Status],
+		CAST([PaidAmount] * 100.0 / NULLIF([TotalAmount], 0) AS DECIMAL(10,1)) AS [Paid Percentage]
+	FROM
+		[finance].[Invoices]
+	WHERE 
+		[PaidAmount] < [TotalAmount] AND 
+		[DueAtUtc] < SYSDATETIME()
+)
 
-
-
-
-
+-- I DIDN'T NEED TO USE TOP 12 BECAUSE THE MONTHS OF YEAR IS 12
+SELECT
+    [Due Month],
+    [CurrencyCode],
+    [Payment Status],
+    COUNT(*) AS [Invoice Count]
+FROM 
+	InvoiceData
+GROUP BY
+    [Due Month],
+    [CurrencyCode],
+    [Payment Status];
 
